@@ -7,22 +7,22 @@ license = "MIT"
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.1.11", features = ["derive"] }
+clap = { version = "4.4.2", features = ["derive"] }
 exitcode = "1.1.2"
 gif = "0.12.0"
-indicatif = "0.17.3"
-inquire = { version = "0.6.0", default-features = false, features = [
+indicatif = "0.17.6"
+inquire = { version = "0.6.2", default-features = false, features = [
     "macros",
     "termion",
 ] }
 ndarray = { version = "0.15.6", features = ["rayon"] }
-ndarray-ndimage = "0.3.0"
+ndarray-ndimage = "0.4.0"
 rand = "0.8.5"
 rayon = "1.7.0"
 termion = "2.0.1"
 
 [dev-dependencies]
-criterion = "0.4.0"
+criterion = "0.5.1"
 
 [[bench]]
 name = "benchmark"
