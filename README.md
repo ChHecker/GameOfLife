@@ -30,18 +30,5 @@ The standard algorithms iterates over every cell, counts its neighbors, and then
 The convolution algorithm, however, is about 17x faster. It uses [`ndarray-ndimage`](https://crates.io/crates/ndarray-ndimage) to convolve the field with the kernel `[[1, 1, 1], [1, 0, 1], [1, 1, 1]]` (`Moore`) or `[[0, 1, 0], [1, 0, 1], [0, 1, 0]]` (`VonNeumann`), which is somehow extremely fast with only one thread (props to Nil!) and then calculates the next field with functional-style maps and addition, multiplication, and comparisons.
 
 ## Licenses
-Thanks to all authors for their great codes. The code to drawing the Game of Life in the terminal was inspired by minesweeper in [`termion`](https://crates.io/crates/termion).
-
-| Crate                                                         | Author(s)                                 | License        |
-| ------------------------------------------------------------- | ----------------------------------------- | -------------- |
-| [`clap`](https://crates.io/crates/clap)                       | rust-cli, clap-rs, Kevin K.               | MIT/Apache-2.0 |
-| [`criterion`](https://crates.io/crates/criterion)             | rust-bus, Brook Heisler                   | MIT/Apache-2.0 |
-| [`exitcode`](https://crates.io/crates/exitcode)               | Ben Wilber                                | Apache-2.0     |
-| [`indicatif`](https://crates.io/crates/indicatif)             | Armin Ronacher, Dirkjan Ochtman           | MIT            |
-| [`inquire`](https://crates.io/crates/inquire)                 | Mikael Mello                              | MIT            |
-| [`ndarray`](https://crates.io/crates/ndarray)                 | bluss, Jim Turner                         | MIT/Apache-2.0 |
-| [`ndarray-ndimage`](https://crates.io/crates/ndarray-ndimage) | Nil Goyette                               | MIT/Apache-2.0 |
-| [`gif`](https://crates.io/crates/gif)                         | Jonathan Behrens, Andreas Molzer          | MIT/Apache-2.0 |
-| [`rand`](https://crates.io/crates/rand)                       | rust-random, Alex Crichton, Diggory Hardy | MIT/Apache-2.0 |
-| [`rayon`](https://crates.io/crates/rayon)                     | Josh Stone, Niko Matsakis                 | MIT/Apache-2.0 |
-| [`termion`](https://crates.io/crates/termion)                 | Jeremy Soller, Michael Murphy, ticki      | MIT            |
+For all licenses, look into `license.html`.  
+This file was automatically created using [cargo-about](https://github.com/EmbarkStudios/cargo-about) (Embark Studios).
