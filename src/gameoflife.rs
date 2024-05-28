@@ -1,10 +1,10 @@
 //! # Game of Life
 //! Contains a collection of structures necessary for building a Game of Life.
 
-use std::fmt::Display;
 use std::ops::Range;
 use std::str::FromStr;
-use std::sync::RwLock;
+use std::sync::atomic::Ordering;
+use std::{fmt::Display, sync::atomic::AtomicU8};
 
 use ndarray::{self, arr2, s, Array2, Zip};
 use ndarray_ndimage::convolve;
@@ -128,7 +128,7 @@ pub trait GameOfLife {
 
 /// Computes the time steps using ordinary iterations.
 pub struct GameOfLifeStd {
-    field: Array2<RwLock<u8>>,
+    field: Array2<AtomicU8>,
     rules: Rule,
     numx: usize,
     numy: usize,
@@ -145,10 +145,9 @@ impl GameOfLifeStd {
                 let top_border = if y > 1 { y - 1 } else { 0 };
                 self.field
                     .slice(s![left_border..right_border, top_border..bottom_border])
-                    .map(|x| (*x.read().expect("poisoned RwLock") == self.rules.state) as usize)
+                    .map(|x| (x.load(Ordering::Relaxed) == self.rules.state) as usize)
                     .sum()
-                    - (*self.field[[x, y]].read().expect("poisoned RwLock") == self.rules.state)
-                        as usize
+                    - (self.field[[x, y]].load(Ordering::Relaxed) == self.rules.state) as usize
             }
             NeighborRule::VonNeumann => {
                 let mut sum = 0;
@@ -175,9 +174,9 @@ impl GameOfLifeStd {
 }
 
 impl GameOfLife for GameOfLifeStd {
-    type Data = RwLock<u8>;
+    type Data = AtomicU8;
 
-    fn new(field: Array2<RwLock<u8>>, rules: Rule) -> Self {
+    fn new(field: Array2<AtomicU8>, rules: Rule) -> Self {
         let shape = field.shape().to_owned();
         let numx = shape[0];
         let numy = shape[1];
@@ -190,19 +189,19 @@ impl GameOfLife for GameOfLifeStd {
     }
 
     fn compute_next_generation(&mut self) {
-        let mut temp = Array2::<RwLock<u8>>::default((self.numx, self.numy));
+        let mut temp = Array2::<AtomicU8>::default((self.numx, self.numy));
         Zip::indexed(&self.field)
             .and(&mut temp)
             .par_for_each(|(x, y), elem_field, elem_temp| {
                 let count = self.count_living_neighbors(x, y);
+                let elem_field = elem_field.load(Ordering::Relaxed);
+
                 if self.rules.birth[count]
-                    || (*elem_field.read().expect("poisoned RwLock") == self.rules.state
-                        && self.rules.survival[count])
+                    || (elem_field == self.rules.state && self.rules.survival[count])
                 {
-                    *elem_temp.write().expect("poisoned RwLock") = self.rules.state;
-                } else if *elem_field.read().expect("poisoned RwLock") != 0 {
-                    *elem_temp.write().expect("poisoned RwLock") =
-                        *elem_field.read().expect("poisoned RwLock") - 1;
+                    elem_temp.store(self.rules.state, Ordering::Relaxed);
+                } else if elem_field != 0 {
+                    elem_temp.store(elem_field - 1, Ordering::Relaxed);
                 }
             });
         self.field = temp;
@@ -210,7 +209,7 @@ impl GameOfLife for GameOfLifeStd {
 
     fn cell(&self, x: usize, y: usize) -> Option<u8> {
         if let Some(cell) = self.field.get((x, y)) {
-            return Some(*cell.read().expect("poisoned RwLock"));
+            return Some(cell.load(Ordering::Relaxed));
         }
         None
     }
@@ -303,7 +302,7 @@ mod test {
 
     #[test]
     fn count_living_neighbors_moore() {
-        let arr = arr2(&[[1, 1, 1], [1, 1, 1], [1, 1, 1]]).map(|elem| RwLock::new(*elem));
+        let arr = arr2(&[[1, 1, 1], [1, 1, 1], [1, 1, 1]]).map(|elem| AtomicU8::new(*elem));
         let rules = Rule::new(
             LifeRule::Raw([false, false, true, true, false, false, false, false, false]),
             LifeRule::Raw([false, false, false, true, false, false, false, false, false]),
@@ -322,7 +321,7 @@ mod test {
 
     #[test]
     fn count_living_neighbors_von_neumann() {
-        let arr = arr2(&[[1, 1, 1], [1, 1, 1], [1, 1, 1]]).map(|elem| RwLock::new(*elem));
+        let arr = arr2(&[[1, 1, 1], [1, 1, 1], [1, 1, 1]]).map(|elem| AtomicU8::new(*elem));
         let rules = Rule::new(
             LifeRule::Raw([false, false, true, true, false, false, false, false, false]),
             LifeRule::Raw([false, false, false, true, false, false, false, false, false]),
@@ -341,7 +340,7 @@ mod test {
 
     #[test]
     fn compute_next_generation_std() {
-        let arr = arr2(&[[1, 1, 1], [1, 1, 1], [1, 1, 1]]).map(|elem| RwLock::new(*elem));
+        let arr = arr2(&[[1, 1, 1], [1, 1, 1], [1, 1, 1]]).map(|elem| AtomicU8::new(*elem));
         let rules = Rule::new(
             LifeRule::Raw([false, false, true, true, false, false, false, false, false]),
             LifeRule::Raw([false, false, false, true, false, false, false, false, false]),
@@ -351,7 +350,7 @@ mod test {
         let mut gol = GameOfLifeStd::new(arr, rules);
 
         gol.compute_next_generation();
-        let temp = gol.field.map(|elem| *elem.read().unwrap());
+        let temp = gol.field.map(|elem| elem.load(Ordering::Relaxed));
 
         assert_eq!(temp, arr2(&[[1, 0, 1], [0, 0, 0], [1, 0, 1]]));
     }
@@ -395,7 +394,7 @@ mod test {
         let field_vec_conv = field_vec_std.clone();
 
         let field_std = Array1::<u8>::from_vec(field_vec_std)
-            .map(|elem| RwLock::new(*elem))
+            .map(|elem| AtomicU8::new(*elem))
             .into_shape((numx, numy))
             .unwrap();
         let field_conv = Array1::<u8>::from_vec(field_vec_conv)
@@ -414,7 +413,7 @@ mod test {
         let mut gol_conv = GameOfLifeConvolution::new(field_conv, rules_conv);
 
         assert_eq!(
-            gol_std.field.map(|elem| *elem.read().unwrap()),
+            gol_std.field.map(|elem| elem.load(Ordering::Relaxed)),
             gol_conv.field,
             "standard and convolution differ"
         );
@@ -423,7 +422,7 @@ mod test {
         gol_conv.compute_next_generation();
 
         assert_eq!(
-            gol_std.field.map(|elem| *elem.read().unwrap()),
+            gol_std.field.map(|elem| elem.load(Ordering::Relaxed)),
             gol_conv.field,
             "standard and convolution differ after one iteration"
         );
@@ -439,7 +438,7 @@ mod test {
         let field_vec_conv = field_vec_std.clone();
 
         let field_std = Array1::<u8>::from_vec(field_vec_std)
-            .map(|elem| RwLock::new(*elem))
+            .map(|elem| AtomicU8::new(*elem))
             .into_shape((numx, numy))
             .unwrap();
         let field_conv = Array1::<u8>::from_vec(field_vec_conv)
@@ -458,7 +457,7 @@ mod test {
         let mut gol_conv = GameOfLifeConvolution::new(field_conv, rules_conv);
 
         assert_eq!(
-            gol_std.field.map(|elem| *elem.read().unwrap()),
+            gol_std.field.map(|elem| elem.load(Ordering::Relaxed)),
             gol_conv.field,
             "standard and convolution differ"
         );
@@ -467,7 +466,7 @@ mod test {
         gol_conv.compute_next_generation();
 
         assert_eq!(
-            gol_std.field.map(|elem| *elem.read().unwrap()),
+            gol_std.field.map(|elem| elem.load(Ordering::Relaxed)),
             gol_conv.field,
             "standard and convolution differ after one iteration"
         );

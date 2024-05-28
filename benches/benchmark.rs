@@ -1,4 +1,4 @@
-use std::sync::RwLock;
+use std::sync::atomic::AtomicU8;
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use game_of_life::gameoflife::*;
@@ -14,7 +14,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let field_vec_conv = field_vec_std.clone();
 
     let field_std = Array1::<u8>::from_vec(field_vec_std)
-        .map(|elem| RwLock::new(*elem))
+        .map(|elem| AtomicU8::new(*elem))
         .into_shape((numx, numy))
         .unwrap();
     let field_conv = Array1::<u8>::from_vec(field_vec_conv)

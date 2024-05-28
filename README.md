@@ -26,8 +26,8 @@ The flags can be:
 - `-h`: list all commands  
 
 ## Algorithms
-The standard algorithms iterates over every cell, counts its neighbors, and then decides whether it's alive in the next step via normal `if` statements. This is fairly quick, especially as I used [`rayon`](https://crates.io/crates/rayon) to do this with multiple threads.  
-The convolution algorithm, however, is about 17x faster. It uses [`ndarray-ndimage`](https://crates.io/crates/ndarray-ndimage) to convolve the field with the kernel `[[1, 1, 1], [1, 0, 1], [1, 1, 1]]` (`Moore`) or `[[0, 1, 0], [1, 0, 1], [0, 1, 0]]` (`VonNeumann`), which is somehow extremely fast with only one thread (props to Nil!) and then calculates the next field with functional-style maps and addition, multiplication, and comparisons.
+The standard algorithms iterates over every cell, counts its neighbors, and then decides whether it's alive in the next step via normal `if` statements. This is fairly quick, especially as I used [`rayon`](https://crates.io/crates/rayon) to do this with multiple threads.
+The convolution algorithm, however, is about 3 faster. It uses [`ndarray-ndimage`](https://crates.io/crates/ndarray-ndimage) to convolve the field with the kernel `[[1, 1, 1], [1, 0, 1], [1, 1, 1]]` (`Moore`) or `[[0, 1, 0], [1, 0, 1], [0, 1, 0]]` (`VonNeumann`), which is somehow extremely fast with only one thread (props to Nil!) and then calculates the next field with functional-style maps and addition, multiplication, and comparisons.
 
 ## Licenses
 For all licenses, look into `license.html`.  

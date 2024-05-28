@@ -3,7 +3,7 @@ use std::fmt::Display;
 use std::fs::File;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
-use std::sync::RwLock;
+use std::sync::atomic::AtomicU8;
 use std::time::Duration;
 
 use clap::{Parser, Subcommand};
@@ -498,8 +498,8 @@ fn main() {
     // Pass the field to a GameOfLife instance and start it
     match arguments.algorithm {
         Algorithm::Std => {
-            let field_vec_std = field_vec.iter().map(|elem| RwLock::new(*elem)).collect();
-            let field = Array1::<RwLock<u8>>::from_vec(field_vec_std)
+            let field_vec_std = field_vec.iter().map(|elem| AtomicU8::new(*elem)).collect();
+            let field = Array1::<AtomicU8>::from_vec(field_vec_std)
                 .into_shape((arguments.numx as usize, arguments.numy as usize))
                 .expect("field reshape");
             let gol = GameOfLifeStd::new(field, arguments.rule);
